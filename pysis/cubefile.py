@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import numpy
+import numpy as np
 import pvl
 
 from six import string_types
@@ -10,18 +10,17 @@ from .specialpixels import SPECIAL_PIXELS
 
 
 class CubeFile(object):
-
     """A Isis Cube file reader."""
 
     PIXEL_TYPES = {
-        'UnsignedByte': numpy.dtype('uint8'),
-        'SignedByte': numpy.dtype('int8'),
-        'UnsignedWord': numpy.dtype('uint16'),
-        'SignedWord': numpy.dtype('int16'),
-        'UnsignedInteger': numpy.dtype('uint32'),
-        'SignedInteger': numpy.dtype('int32'),
-        'Real': numpy.dtype('float32'),
-        'Double': numpy.dtype('float64')
+        'UnsignedByte': np.dtype('uint8'),
+        'SignedByte': np.dtype('int8'),
+        'UnsignedWord': np.dtype('uint16'),
+        'SignedWord': np.dtype('int16'),
+        'UnsignedInteger': np.dtype('uint32'),
+        'SignedInteger': np.dtype('int32'),
+        'Real': np.dtype('float32'),
+        'Double': np.dtype('float64')
     }
 
     BYTE_ORDERS = {
@@ -34,19 +33,32 @@ class CubeFile(object):
 
     @classmethod
     def open(cls, filename):
-        """Read an Isis Cube file from disk.
+        """
+        Read an Isis Cube file from disk.
 
-        :param filename: name of file to read as an isis file
+        Parameters
+        ----------
+            filename : string
+
+        Returns
+        ----------
+            IsisCube
+                A new instance of the IsisCube class loaded from file.
+
         """
         with open(filename, 'rb') as fp:
             return cls(fp, filename)
 
     def __init__(self, stream_or_fname, filename=None):
-        """Create an Isis Cube file.
-
-        :param stream: file object to read as an isis cube file
-
-        :param filename: an optional filename to attach to the object
+        """
+        Create an Isis Cube file.
+        
+        Parameters
+        ----------
+            stream : file object
+                An open Isis .cub file object
+            filename : string, optionsl
+        
         """
         if isinstance(stream_or_fname, string_types):
             self.filename = stream_or_fname
@@ -63,12 +75,25 @@ class CubeFile(object):
         self.data = self._parse_data(stream)
 
     def apply_scaling(self, copy=True):
-        """Scale pixel values to there true DN.
+        """
+        Scale pixel values to their true DN.
 
-        :param copy: whether to apply the scalling to a copy of the pixel data
-            and leave the orginial unaffected
+        Parameters
+        ----------
+            copy : boolean 
+                scale and return a copy of the array?
 
-        :returns: a scalled version of the pixel data
+        Returns
+        ----------
+            ndarray
+                a scaled version of the pixel data
+        
+        To-Do
+        ----------
+        This currently breaks on my machine (Mac OSX 10.11.5) when copy=False.
+        The data array in the test case is an int16 array and it complains
+        about broadcasting a float (when scaling by the multiplier) to an
+        int16 array.
         """
         if copy:
             return self.multiplier * self.data + self.base
@@ -82,10 +107,24 @@ class CubeFile(object):
         return self.data
 
     def apply_numpy_specials(self, copy=True):
-        """Convert isis special pixel values to numpy special pixel values.
+        """
+        Convert isis special pixel values to numpy special pixel values.
+        
+        Parameters
+        ----------
+            copy : boolean 
+                scale and return a copy of the array?
 
+        Returns
+        ----------
+            ndarray
+                an array with ISIS special values converted to numpy's NaN.
+        
+        Notes
+        ----------
+        Comparison table:
             =======  =======
-             Isis     Numpy
+             Isis     NumPy
             =======  =======
             Null     nan
             Lrs      -inf
@@ -94,58 +133,58 @@ class CubeFile(object):
             Hrs      inf
             =======  =======
 
-        :param copy: whether to apply the new special values to a copy of the
-            pixel data and leave the orginial unaffected
-
-        :returns: a numpy array with special values converted to numpy's nan,
-            inf and -inf
         """
         if copy:
-            data = self.data.astype(numpy.float64)
+            data = self.data.astype(np.float64)
 
-        elif self.data.dtype != numpy.float64:
-            data = self.data = self.data.astype(numpy.float64)
+        elif self.data.dtype != np.float64:
+            data = self.data = self.data.astype(np.float64)
 
         else:
             data = self.data
 
-        data[data == self.specials['Null']] = numpy.nan
-        data[data < self.specials['Min']] = numpy.NINF
-        data[data > self.specials['Max']] = numpy.inf
+        data[data == self.specials['Null']] = np.nan
+        data[data < self.specials['Min']] = np.NINF
+        data[data > self.specials['Max']] = np.inf
 
         return data
 
     def specials_mask(self):
-        """Create a pixel map for special pixels.
+        """
+        Create a pixel map for special pixels.
 
-        :returns: an array where the value is `False` if the pixel is special
-            and `True` otherwise
+        Returns
+        ----------
+            array_like
+                 boolean array, False if value is a special pixel, True 
+                 otherwise. 
+
         """
         mask = self.data >= self.specials['Min']
         mask &= self.data <= self.specials['Max']
         return mask
 
     def get_image_array(self):
-        """Create an array for use in making an image.
+        """
+        Create an array for use in making an image.
 
         Creates a linear stretch of the image and scales it to between `0` and
         `255`. `Null`, `Lis` and `Lrs` pixels are set to `0`. `His` and `Hrs`
         pixels are set to `255`.
 
-        Usage::
+        Returns
+        ----------
+            ndarray
+                A copy of the data array as type uint8
 
-            from pysis import CubeFile
-            from PIL import Image
+        Examples
+        ----------
+            >>>>from pysis import CubeFile
+            >>>>from PIL import Image
+            >>>>image = CubeFile.open('test.cub')
+            >>>>data = image.get_image_array()
+            >>>>Image.fromarray(data[0]).save('test.png')
 
-            # Read in the image and create the image data
-            image = CubeFile.open('test.cub')
-            data = image.get_image_array()
-
-            # Save the first band to a new file
-            Image.fromarray(data[0]).save('test.png')
-
-        :returns:
-            A uint8 array of pixel values.
         """
         specials_mask = self.specials_mask()
         data = self.data.copy()
@@ -156,7 +195,7 @@ class CubeFile(object):
         data[data == self.specials['His']] = 255
         data[data == self.specials['Hrs']] = 255
 
-        return data.astype(numpy.uint8)
+        return data.astype(np.uint8)
 
     @property
     def bands(self):
@@ -230,9 +269,11 @@ class CubeFile(object):
         return self.bands * self.lines * self.samples
 
     def _parse_label(self, stream):
+        """Parses the label of an ISIS cube, returns a pvl module"""
         return pvl.load(stream)
 
     def _parse_data(self, stream):
+        """Parses the image data of an ISIS cube"""
         stream.seek(self.start_byte)
 
         if self.format == 'BandSequential':
@@ -244,10 +285,12 @@ class CubeFile(object):
         raise Exception('Unkown Isis Cube format (%s)' % self.format)
 
     def _parse_band_sequential_data(self, stream):
-        data = numpy.fromfile(stream, self.dtype, self.size)
+        """Parses the image data of a band sequential ISIS cube"""
+        data = np.fromfile(stream, self.dtype, self.size)
         return data.reshape(self.shape)
 
     def _parse_tile_data(self, stream):
+        """Parses the image data of a tiled ISIS cube"""
         tile_lines = self.tile_lines
         tile_samples = self.tile_samples
         tile_size = tile_lines * tile_samples
@@ -256,7 +299,7 @@ class CubeFile(object):
         samples = range(0, self.samples, self.tile_samples)
 
         dtype = self.dtype
-        data = numpy.empty(self.shape, dtype=dtype)
+        data = np.empty(self.shape, dtype=dtype)
 
         for band in data:
             for line in lines:
@@ -265,7 +308,7 @@ class CubeFile(object):
                     line_end = line + tile_lines
                     chunk = band[line:line_end, sample:sample_end]
 
-                    tile = numpy.fromfile(stream, dtype, tile_size)
+                    tile = np.fromfile(stream, dtype, tile_size)
                     tile = tile.reshape((tile_lines, tile_samples))
 
                     chunk_lines, chunk_samples = chunk.shape
