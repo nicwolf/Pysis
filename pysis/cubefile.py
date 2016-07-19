@@ -6,30 +6,11 @@ import pvl
 from six import string_types
 from six.moves import range
 
-from .specialpixels import SPECIAL_PIXELS
+from .constants import PIXEL_TYPES, BYTE_ORDERS, SPECIAL_PIXELS
 
 
 class CubeFile(object):
     """A Isis Cube file reader."""
-
-    PIXEL_TYPES = {
-        'UnsignedByte': np.dtype('uint8'),
-        'SignedByte': np.dtype('int8'),
-        'UnsignedWord': np.dtype('uint16'),
-        'SignedWord': np.dtype('int16'),
-        'UnsignedInteger': np.dtype('uint32'),
-        'SignedInteger': np.dtype('int32'),
-        'Real': np.dtype('float32'),
-        'Double': np.dtype('float64')
-    }
-
-    BYTE_ORDERS = {
-        'NoByteOrder': '=',  # system
-        'Lsb': '<',          # little-endian
-        'Msb': '>'           # big-endian
-    }
-
-    SPECIAL_PIXELS = SPECIAL_PIXELS
 
     @classmethod
     def open(cls, filename):
@@ -234,8 +215,8 @@ class CubeFile(object):
     def dtype(self):
         """Pixel data type."""
         pixels_group = self.label['IsisCube']['Core']['Pixels']
-        byte_order = self.BYTE_ORDERS[pixels_group['ByteOrder']]
-        pixel_type = self.PIXEL_TYPES[pixels_group['Type']]
+        byte_order = BYTE_ORDERS[pixels_group['ByteOrder']]
+        pixel_type = PIXEL_TYPES[pixels_group['Type']]
         return pixel_type.newbyteorder(byte_order)
 
     @property
