@@ -39,11 +39,11 @@ SPECIAL_PIXELS = {
         'Lis': 2,
         'His': 65534,
         'Hrs': 65535,
-        'Max': 65522
+        'Max': 65523
     },
 
     'SignedWord': {
-        'Min': -32752,
+        'Min': -32763,
         'Null': -32768,
         'Lrs': -32767,
         'Lis': -32766,
@@ -53,7 +53,7 @@ SPECIAL_PIXELS = {
     },
 
     'SignedInteger': {
-        'Min': -8388614,
+        'Min': -8388608,
         'Null': -8388613,
         'Lrs': -8388612,
         'Lis': -8388611,
