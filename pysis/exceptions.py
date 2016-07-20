@@ -7,11 +7,11 @@ This module contains the set of Pysis exceptions.
 
 class IsisException(Exception):
     """Base exception for isis errors."""
-
+    pass
 
 class VersionError(IsisException):
     """The wrong version of isis is being used."""
-
+    pass
 
 class ProcessError(IsisException):
     """This exception is raised when an isis process returns a non-zero exit
@@ -27,9 +27,7 @@ class ProcessError(IsisException):
         super(ProcessError, self).__init__(msg % (self.cmd[0], self.returncode))
 
     def __reduce__(self):
-        return (self.__class__, (
-            self.returncode,
-            self.cmd,
-            self.stdout,
-            self.stderr,
-        ))
+        return (self.__class__, (self.returncode,
+                                 self.cmd,
+                                 self.stdout,
+                                 self.stderr,))
